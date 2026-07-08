@@ -7,7 +7,9 @@ import {
   DollarSign, ShoppingCart, Star, Bell, Brain, Settings, ChevronLeft, ChevronRight,
   BarChart3, Home, RefreshCw, Moon, Sun, Zap, Users, MessageCircle, Bot,
   AlertTriangle, Rocket, Download, Database, LogOut, User, Loader2, CheckCircle2,
-  AlertCircle, Play, Pause, MessageSquare,
+  AlertCircle, Play, Pause, MessageSquare, Target, CalendarDays, UserCog,
+  Briefcase, LineChart, Flame, Handshake, Image, ClipboardList, Flag,
+  Search, Radar, Command, ListTodo,
 } from "lucide-react"
 
 export type DashboardView =
@@ -25,6 +27,20 @@ export type DashboardView =
   | "stats"
   | "export"
   | "settings"
+  | "sprint-overview"
+  | "sprint-today"
+  | "sprint-profile"
+  | "sprint-gigs"
+  | "sprint-analytics"
+  | "sprint-habits"
+  | "sprint-leads"
+  | "sprint-proof"
+  | "sprint-weekly"
+  | "sprint-september"
+  | "sprint-competitors"
+  | "sprint-seo"
+  | "sprint-command"
+  | "sprint-todoist"
 
 interface NavItem {
   id: DashboardView
@@ -66,6 +82,25 @@ interface DashboardShellProps {
 }
 
 const navGroups: NavGroup[] = [
+  {
+    label: "Growth Sprint",
+    items: [
+      { id: "sprint-command", label: "Command Center", icon: Command },
+      { id: "sprint-todoist", label: "Todoist Sync", icon: ListTodo },
+      { id: "sprint-overview", label: "Sprint Overview", icon: Target },
+      { id: "sprint-today", label: "Today Focus", icon: CalendarDays },
+      { id: "sprint-profile", label: "Profile Cleanup", icon: UserCog },
+      { id: "sprint-gigs", label: "Gig Rebuild", icon: Briefcase },
+      { id: "sprint-analytics", label: "Analytics", icon: LineChart },
+      { id: "sprint-habits", label: "Daily Habits", icon: Flame },
+      { id: "sprint-leads", label: "Buyer Leads", icon: Handshake },
+      { id: "sprint-proof", label: "Portfolio Proof", icon: Image },
+      { id: "sprint-competitors", label: "Competitors", icon: Radar },
+      { id: "sprint-seo", label: "SEO Keywords", icon: Search },
+      { id: "sprint-weekly", label: "Weekly Review", icon: ClipboardList },
+      { id: "sprint-september", label: "September Scale", icon: Flag },
+    ],
+  },
   {
     label: "Home",
     items: [

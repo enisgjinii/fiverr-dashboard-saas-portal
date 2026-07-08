@@ -34,6 +34,11 @@ yarn-error.log*
 coverage/
 .nyc_output/
 
-# Conversation data files
+# Secrets
+.env
+.env.local
+.env.*.local
+todoist.local.json
+
 conversation*.json
 *conversation.json

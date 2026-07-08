@@ -12,7 +12,8 @@
     "sidePanel"
   ],
   "host_permissions": [
-    "https://www.fiverr.com/*"
+    "https://www.fiverr.com/*",
+    "https://api.todoist.com/*"
   ],
   "side_panel": {
     "default_path": "sidepanel.html"

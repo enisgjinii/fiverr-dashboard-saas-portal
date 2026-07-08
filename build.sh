@@ -24,7 +24,7 @@ cat > dist/manifest.json << 'EOF'
   "version": "2.0.0",
   "description": "Extract conversations, orders, earnings from Fiverr",
   "permissions": ["activeTab", "storage", "scripting", "downloads", "tabs", "sidePanel"],
-  "host_permissions": ["https://www.fiverr.com/*"],
+  "host_permissions": ["https://www.fiverr.com/*", "https://api.todoist.com/*"],
   "side_panel": { "default_path": "sidepanel.html" },
   "background": { "service_worker": "background.js" },
   "content_scripts": [{ "matches": ["https://www.fiverr.com/*"], "js": ["content.js"] }],

@@ -15,6 +15,8 @@ import ReviewsPanel from '@/components/sections/reviews-panel';
 import { NotificationsPanel } from '@/components/sections/notifications-panel';
 import InsightsPanel from '@/components/sections/insights-panel';
 import { SettingsPanel } from '@/components/sections/settings-panel';
+import { SprintDashboard } from '@/sprint';
+import type { SprintDashboardView } from '@/sprint';
 import {
   Download, FileText, FileJson, Paperclip, Users, MessageSquare,
   RefreshCw, CheckCircle2, AlertCircle, Loader2, Eye, Search, Star,
@@ -284,7 +286,7 @@ export default function Dashboard() {
   const [messageSearchQuery, setMessageSearchQuery] = useState('');
   const [isBulkExporting, setIsBulkExporting] = useState(false);
   const [bulkExportProgress, setBulkExportProgress] = useState<{ current: number; total: number } | null>(null);
-  const [activeView, setActiveView] = useState<DashboardView>('overview');
+  const [activeView, setActiveView] = useState<DashboardView>('sprint-command');
   const [messageFilter, setMessageFilter] = useState<'all' | 'sent' | 'received' | 'attachments'>('all');
   const [isLive, setIsLive] = useState(false);
   const [lastSync, setLastSync] = useState(0);
@@ -538,6 +540,10 @@ export default function Dashboard() {
       pageBadge={conversationBadge}
       navBadges={navBadges}
     >
+            {activeView.startsWith('sprint-') && (
+              <SprintDashboard view={activeView as SprintDashboardView} />
+            )}
+
             {activeView === 'overview' && (
               <OverviewPanel
                 earningsData={earningsData}
