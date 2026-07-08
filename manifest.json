@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Fiverr Conversation Extractor",
+  "version": "2.0.0",
+  "description": "Extract conversations from Fiverr inbox - Modern UI with React & Shadcn",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting",
+    "downloads",
+    "tabs",
+    "sidePanel"
+  ],
+  "host_permissions": [
+    "https://www.fiverr.com/*"
+  ],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.fiverr.com/*"],
+      "js": ["content.js"]
+    }
+  ],
+  "action": {
+    "default_title": "Open Fiverr Extractor",
+    "default_popup": "popup.html"
+  }
+}
