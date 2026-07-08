@@ -7,6 +7,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
+import { DashboardShell, type DashboardView } from '@/components/sections/layout';
+import { OverviewPanel } from '@/components/sections/overview-panel';
+import { OrdersPanel } from '@/components/sections/orders-panel';
+import EarningsPanel from '@/components/sections/earnings-panel';
+import ReviewsPanel from '@/components/sections/reviews-panel';
+import { NotificationsPanel } from '@/components/sections/notifications-panel';
+import InsightsPanel from '@/components/sections/insights-panel';
+import { SettingsPanel } from '@/components/sections/settings-panel';
 import {
   Download, FileText, FileJson, Paperclip, Users, MessageSquare,
   RefreshCw, CheckCircle2, AlertCircle, Loader2, Eye, Search, Star,
@@ -276,7 +284,7 @@ export default function Dashboard() {
   const [messageSearchQuery, setMessageSearchQuery] = useState('');
   const [isBulkExporting, setIsBulkExporting] = useState(false);
   const [bulkExportProgress, setBulkExportProgress] = useState<{ current: number; total: number } | null>(null);
-  const [activeView, setActiveView] = useState('overview');
+  const [activeView, setActiveView] = useState<DashboardView>('overview');
   const [messageFilter, setMessageFilter] = useState<'all' | 'sent' | 'received' | 'attachments'>('all');
   const [isLive, setIsLive] = useState(false);
   const [lastSync, setLastSync] = useState(0);
@@ -291,7 +299,6 @@ export default function Dashboard() {
   const [reviewsData, setReviewsData] = useState<any>(null);
   const [notificationsData, setNotificationsData] = useState<any>(null);
   const [isFetchingData, setIsFetchingData] = useState(false);
-  const [earningsTab, setEarningsTab] = useState<'overview' | 'yearly' | 'monthly' | 'buyers' | 'types' | 'withdrawals' | 'transactions'>('overview');
   const liveRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const updateStatus = useCallback((message: string, type: StatusType = 'success') => setStatus({ message, type }), []);
@@ -496,146 +503,58 @@ export default function Dashboard() {
   if (!authChecked) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!currentUser) return <AuthScreen onLogin={setCurrentUser} />;
 
-  const navItems = [
-    { id: 'overview', label: 'Overview', icon: Home },
-    { id: 'contacts', label: 'Contacts', icon: Users, badge: contacts.length },
-    { id: 'conversation', label: 'Conversation', icon: MessageCircle },
-    { id: 'ai', label: 'AI Analysis', icon: Bot },
-    { id: 'risks', label: 'Risk Monitor', icon: AlertTriangle, badge: analysis?.risks.length },
-    { id: 'opportunities', label: 'Opportunities', icon: Rocket, badge: analysis?.opportunities.length },
-    { id: 'orders', label: 'Orders', icon: ShoppingCart },
-    { id: 'earnings', label: 'Earnings', icon: DollarSign },
-    { id: 'reviews', label: 'Reviews', icon: Star },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'stats', label: 'Statistics', icon: BarChart3 },
-    { id: 'export', label: 'Export', icon: Download },
-    { id: 'settings', label: 'Settings', icon: Settings },
-  ];
+  const navBadges: Partial<Record<DashboardView, number>> = {
+    contacts: contacts.length,
+    risks: analysis?.risks.length,
+    opportunities: analysis?.opportunities.length,
+    notifications: notificationsData?.unreadCount,
+  };
+
+  const conversationBadge = currentUsername && ['conversation', 'ai', 'risks', 'opportunities', 'stats'].includes(activeView)
+    ? <Badge variant="outline">{currentUsername}</Badge>
+    : undefined;
 
   return (
-    <div className={`flex h-screen ${darkMode ? 'dark' : ''}`}>
-      {/* Sidebar */}
-      <div className={`${sidebarCollapsed ? 'w-16' : 'w-64'} shrink-0 bg-card border-r border-border flex flex-col transition-all duration-200`}>
-        <div className="p-4 border-b border-border">
-          <div className="flex items-center gap-2">
-            <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center shrink-0"><Zap className="h-5 w-5 text-primary-foreground" /></div>
-            {!sidebarCollapsed && <div><h1 className="text-base font-bold">Fiverr Dashboard</h1><p className="text-xs text-muted-foreground">Pro Extractor v2.0</p></div>}
-          </div>
-        </div>
-
-        {!sidebarCollapsed && (
-          <div className="px-3 py-2 border-b border-border">
-            <div className="flex items-center justify-between text-xs mb-1">
-              <span className="flex items-center gap-1.5"><div className={`h-2 w-2 rounded-full ${isOnFiverr ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />{isOnFiverr ? 'Connected' : 'Not Connected'}</span>
-              <span className="text-muted-foreground">{currentTime.toLocaleTimeString()}</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-1 border-t border-border/50"><User className="h-3 w-3" /><span className="truncate">{currentUser.username}</span></div>
-            {status.message && <div className={`mt-2 p-2 rounded-md text-xs flex items-center gap-1.5 ${status.type === 'error' ? 'bg-red-500/10 text-red-500' : status.type === 'success' ? 'bg-green-500/10 text-green-600' : 'bg-blue-500/10 text-blue-500'}`}>{getStatusIcon()}<span className="truncate">{status.message}</span></div>}
-          </div>
-        )}
-
-        <ScrollArea className="flex-1">
-          <nav className="p-2 space-y-1">
-            {navItems.map(item => (
-              <button key={item.id} onClick={() => setActiveView(item.id)} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-colors ${activeView === item.id ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}`} title={item.label}>
-                <item.icon className="h-4 w-4 shrink-0" />
-                {!sidebarCollapsed && <><span className="flex-1 text-left">{item.label}</span>{item.badge !== undefined && item.badge > 0 && <Badge variant={activeView === item.id ? 'secondary' : 'outline'} className="text-xs">{item.badge}</Badge>}</>}
-              </button>
-            ))}
-          </nav>
-        </ScrollArea>
-
-        <div className="p-3 border-t border-border space-y-2">
-          {!sidebarCollapsed && <>
-            <Button onClick={handleFetchAllData} disabled={isFetchingData || !isOnFiverr} className="w-full" size="sm">{isFetchingData ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Database className="h-4 w-4 mr-2" />}Fetch Everything</Button>
-            <Button onClick={handleFetchContacts} disabled={isLoading || !isOnFiverr} variant="outline" className="w-full" size="sm">{isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}Contacts</Button>
-            <Button onClick={handleExtractConversation} disabled={isLoading || !isOnFiverr} variant="outline" className="w-full" size="sm">{isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <MessageSquare className="h-4 w-4 mr-2" />}Extract Chat</Button>
-            <div className="flex gap-1">
-              <Button variant="outline" size="sm" className="flex-1" onClick={() => setDarkMode(!darkMode)}>{darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</Button>
-              <Button variant={isLive ? 'default' : 'outline'} size="sm" className="flex-1" onClick={() => setIsLive(!isLive)}>{isLive ? <><Pause className="h-3.5 w-3.5 mr-1" />Live</> : <><Play className="h-3.5 w-3.5 mr-1" />Live</>}</Button>
-              <Button variant="ghost" size="sm" onClick={() => setSidebarCollapsed(!sidebarCollapsed)}><ChevronRight className={`h-4 w-4 transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`} /></Button>
-            </div>
-            <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={handleLogout}><LogOut className="h-4 w-4 mr-2" />Logout</Button>
-          </>}
-          {sidebarCollapsed && <Button variant="ghost" size="icon" className="w-full" onClick={() => setSidebarCollapsed(false)}><ChevronRight className="h-4 w-4 rotate-180" /></Button>}
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-background">
-        <div className="shrink-0 h-14 border-b border-border flex items-center justify-between px-6">
-          <div className="flex items-center gap-3"><h2 className="text-lg font-semibold capitalize">{navItems.find(n => n.id === activeView)?.label}</h2>{currentUsername && (activeView === 'conversation' || activeView === 'ai' || activeView === 'risks' || activeView === 'opportunities' || activeView === 'stats') && <Badge variant="outline">{currentUsername}</Badge>}</div>
-          <div className="flex items-center gap-2"><Badge variant={isLive ? 'default' : 'secondary'} className="text-xs flex items-center gap-1"><div className={`h-1.5 w-1.5 rounded-full ${isLive ? 'bg-red-500 animate-pulse' : 'bg-muted-foreground'}`} />{isLive ? 'Live Mode' : 'Offline'}</Badge><span className="text-xs text-muted-foreground">Last sync: {lastSync ? formatDateShort(lastSync) : 'Never'}</span></div>
-        </div>
-
-        <ScrollArea className="flex-1">
-          <div className="p-6">
-            {/* OVERVIEW */}
+    <DashboardShell
+      activeView={activeView}
+      onViewChange={setActiveView}
+      isCollapsed={sidebarCollapsed}
+      onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+      isDark={darkMode}
+      onToggleTheme={() => { setDarkMode(!darkMode); chrome.storage.local.set({ darkMode: !darkMode }); }}
+      isOnFiverr={isOnFiverr}
+      isLive={isLive}
+      onToggleLive={() => setIsLive(!isLive)}
+      currentUser={currentUser}
+      onLogout={handleLogout}
+      status={status}
+      lastSync={lastSync}
+      currentTime={currentTime}
+      isFetchingData={isFetchingData}
+      isLoading={isLoading}
+      onFetchAll={handleFetchAllData}
+      onFetchContacts={handleFetchContacts}
+      onExtractChat={handleExtractConversation}
+      pageBadge={conversationBadge}
+      navBadges={navBadges}
+    >
             {activeView === 'overview' && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-4 gap-4">
-                  <Card className="p-4"><div className="flex items-center gap-3"><div className="h-12 w-12 rounded-xl bg-blue-500/10 flex items-center justify-center"><Users className="h-6 w-6 text-blue-500" /></div><div><p className="text-3xl font-bold">{contacts.length}</p><p className="text-sm text-muted-foreground">Total Contacts</p></div></div></Card>
-                  <Card className="p-4"><div className="flex items-center gap-3"><div className="h-12 w-12 rounded-xl bg-green-500/10 flex items-center justify-center"><MessageCircle className="h-6 w-6 text-green-500" /></div><div><p className="text-3xl font-bold">{conversationData?.messages.length || 0}</p><p className="text-sm text-muted-foreground">Messages</p></div></div></Card>
-                  <Card className="p-4"><div className="flex items-center gap-3"><div className="h-12 w-12 rounded-xl bg-purple-500/10 flex items-center justify-center"><Brain className="h-6 w-6 text-purple-500" /></div><div><p className="text-3xl font-bold">{analysis?.communicationScore || 0}</p><p className="text-sm text-muted-foreground">AI Score</p></div></div></Card>
-                  <Card className="p-4"><div className="flex items-center gap-3"><div className="h-12 w-12 rounded-xl bg-orange-500/10 flex items-center justify-center"><Gauge className="h-6 w-6 text-orange-500" /></div><div><p className="text-3xl font-bold">{analysis?.healthScore || 0}</p><p className="text-sm text-muted-foreground">Health Score</p></div></div></Card>
-                </div>
-
-                {analysis && (
-                  <div className="grid grid-cols-3 gap-4">
-                    <Card className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-purple-500/20"><CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Brain className="h-4 w-4 text-purple-500" />Communication Score</CardTitle></CardHeader><CardContent><div className="flex items-center gap-3"><div className="relative h-20 w-20"><svg className="h-20 w-20 -rotate-90" viewBox="0 0 36 36"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" strokeWidth="3" className="text-muted" /><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" strokeWidth="3" strokeDasharray={`${analysis.communicationScore}, 100`} strokeLinecap="round" className="text-purple-500" /></svg><div className="absolute inset-0 flex items-center justify-center"><span className="text-xl font-bold">{analysis.communicationScore}</span></div></div><p className="text-xs text-muted-foreground">{analysis.communicationScore >= 70 ? 'Excellent' : analysis.communicationScore >= 40 ? 'Fair' : 'Needs work'}</p></div></CardContent></Card>
-                    <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-500/20"><CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Heart className="h-4 w-4 text-green-500" />Health Score</CardTitle></CardHeader><CardContent><div className="flex items-center gap-3"><div className="relative h-20 w-20"><svg className="h-20 w-20 -rotate-90" viewBox="0 0 36 36"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" strokeWidth="3" className="text-muted" /><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" strokeWidth="3" strokeDasharray={`${analysis.healthScore}, 100`} strokeLinecap="round" className="text-green-500" /></svg><div className="absolute inset-0 flex items-center justify-center"><span className="text-xl font-bold">{analysis.healthScore}</span></div></div><p className="text-xs text-muted-foreground">{analysis.risks.length === 0 ? 'No risks' : `${analysis.risks.length} risks`}</p></div></CardContent></Card>
-                    <Card className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/20"><CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Rocket className="h-4 w-4 text-blue-500" />Engagement Score</CardTitle></CardHeader><CardContent><div className="flex items-center gap-3"><div className="relative h-20 w-20"><svg className="h-20 w-20 -rotate-90" viewBox="0 0 36 36"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" strokeWidth="3" className="text-muted" /><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" strokeWidth="3" strokeDasharray={`${analysis.engagementScore}, 100`} strokeLinecap="round" className="text-blue-500" /></svg><div className="absolute inset-0 flex items-center justify-center"><span className="text-xl font-bold">{analysis.engagementScore}</span></div></div><p className="text-xs text-muted-foreground">{analysis.opportunities.length} opportunities</p></div></CardContent></Card>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-3 gap-4">
-                  <Card><CardHeader><CardTitle className="text-base flex items-center gap-2"><TrendingUp className="h-5 w-5 text-green-500" />AI Insights</CardTitle></CardHeader><CardContent className="space-y-2">
-                    {analysis ? analysis.insights.slice(0, 4).map((ins, i) => (
-                      <div key={i} className={`p-2.5 rounded-lg text-sm ${ins.type === 'good' ? 'bg-green-500/10' : ins.type === 'bad' ? 'bg-red-500/10' : 'bg-yellow-500/10'}`}><div className="flex items-start gap-2">{ins.type === 'good' ? <ThumbsUp className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> : ins.type === 'bad' ? <ThumbsDown className="h-4 w-4 text-red-500 mt-0.5 shrink-0" /> : <Lightbulb className="h-4 w-4 text-yellow-500 mt-0.5 shrink-0" />}<div><p className="font-medium text-sm">{ins.title}</p><p className="text-xs text-muted-foreground mt-0.5">{ins.desc}</p></div></div></div>
-                    )) : <p className="text-sm text-muted-foreground">Extract a conversation to see insights.</p>}
-                    <Button onClick={() => setActiveView('ai')} variant="ghost" size="sm" className="w-full mt-2">View All <ChevronRight className="h-4 w-4" /></Button>
-                  </CardContent></Card>
-
-                  <Card><CardHeader><CardTitle className="text-base flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-red-500" />Risk Monitor</CardTitle></CardHeader><CardContent className="space-y-2">
-                    {analysis && analysis.risks.length > 0 ? analysis.risks.slice(0, 3).map((r, i) => (
-                      <div key={i} className={`p-2.5 rounded-lg text-sm ${r.level === 'high' ? 'bg-red-500/10 border border-red-500/20' : r.level === 'medium' ? 'bg-orange-500/10 border border-orange-500/20' : 'bg-yellow-500/10 border border-yellow-500/20'}`}><div className="flex items-start gap-2"><AlertTriangle className={`h-4 w-4 mt-0.5 shrink-0 ${r.level === 'high' ? 'text-red-500' : 'text-orange-500'}`} /><div><p className="font-medium text-sm">{r.title}</p><p className="text-xs text-muted-foreground mt-0.5">{r.desc}</p></div></div></div>
-                    )) : <p className="text-sm text-muted-foreground">No risks detected.</p>}
-                    <Button onClick={() => setActiveView('risks')} variant="ghost" size="sm" className="w-full mt-2">View All <ChevronRight className="h-4 w-4" /></Button>
-                  </CardContent></Card>
-
-                  <Card><CardHeader><CardTitle className="text-base flex items-center gap-2"><Rocket className="h-5 w-5 text-blue-500" />Opportunities</CardTitle></CardHeader><CardContent className="space-y-2">
-                    {analysis && analysis.opportunities.length > 0 ? analysis.opportunities.slice(0, 3).map((o, i) => (
-                      <div key={i} className="p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm"><div className="flex items-start gap-2"><Rocket className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" /><div><p className="font-medium">{o.title}</p><p className="text-xs text-muted-foreground mt-0.5">{o.desc}</p><p className="text-xs font-medium text-blue-500 mt-1 flex items-center gap-1"><Target className="h-3 w-3" />{o.action}</p></div></div></div>
-                    )) : <p className="text-sm text-muted-foreground">No opportunities detected.</p>}
-                    <Button onClick={() => setActiveView('opportunities')} variant="ghost" size="sm" className="w-full mt-2">View All <ChevronRight className="h-4 w-4" /></Button>
-                  </CardContent></Card>
-                </div>
-
-                {analysis && (
-                  <div className="grid grid-cols-6 gap-3">
-                    <Card className="p-3 text-center"><TrendingUp className="h-5 w-5 text-green-500 mx-auto mb-1" /><p className="text-xl font-bold">{analysis.stats.sent}</p><p className="text-xs text-muted-foreground">Sent</p></Card>
-                    <Card className="p-3 text-center"><ArrowDownLeft className="h-5 w-5 text-orange-500 mx-auto mb-1" /><p className="text-xl font-bold">{analysis.stats.received}</p><p className="text-xs text-muted-foreground">Received</p></Card>
-                    <Card className="p-3 text-center"><Clock className="h-5 w-5 text-cyan-500 mx-auto mb-1" /><p className="text-xl font-bold">{analysis.stats.avgResponseMin}m</p><p className="text-xs text-muted-foreground">Avg Response</p></Card>
-                    <Card className="p-3 text-center"><Flame className="h-5 w-5 text-red-500 mx-auto mb-1" /><p className="text-xl font-bold">{analysis.stats.urgentCount}</p><p className="text-xs text-muted-foreground">Urgent</p></Card>
-                    <Card className="p-3 text-center"><DollarSign className="h-5 w-5 text-green-500 mx-auto mb-1" /><p className="text-xl font-bold">{analysis.stats.buyingCount}</p><p className="text-xs text-muted-foreground">Buy Signals</p></Card>
-                    <Card className="p-3 text-center"><Smile className="h-5 w-5 text-yellow-500 mx-auto mb-1" /><p className="text-xl font-bold">{analysis.stats.positiveCount}</p><p className="text-xs text-muted-foreground">Positive</p></Card>
-                  </div>
-                )}
-
-                <Card><CardHeader><CardTitle className="text-base">Conversation Preview</CardTitle></CardHeader><CardContent>
-                  {conversationData ? (
-                    <div className="space-y-2">
-                      {conversationData.messages.slice(-4).reverse().map((m, i) => (
-                        <div key={i} className={`p-3 rounded-lg ${m.sender === currentUsername ? 'bg-primary/10 ml-8' : 'bg-muted mr-8'}`}>
-                          <div className="flex items-center gap-2 mb-1"><span className="text-xs font-medium">{m.sender === currentUsername ? 'You' : m.sender}</span><span className="text-xs text-muted-foreground">{formatDate(m.createdAt)}</span>{m.attachments && m.attachments.length > 0 && <Badge variant="secondary" className="text-xs"><Paperclip className="h-3 w-3 mr-1" />{m.attachments.length}</Badge>}</div>
-                          <p className="text-sm line-clamp-2">{m.body}</p>
-                        </div>
-                      ))}
-                      <Button onClick={() => setActiveView('conversation')} variant="outline" size="sm" className="w-full">View Full Conversation <ChevronRight className="h-4 w-4" /></Button>
-                    </div>
-                  ) : <p className="text-sm text-muted-foreground">No conversation loaded. Click "Extract Chat" to load.</p>}
-                </CardContent></Card>
-              </div>
+              <OverviewPanel
+                earningsData={earningsData}
+                ordersData={ordersData}
+                reviewsData={reviewsData}
+                notificationsData={notificationsData}
+                contactsCount={contacts.length}
+                messagesCount={conversationData?.messages.length || 0}
+                aiScore={analysis?.communicationScore}
+                healthScore={analysis?.healthScore}
+                opportunitiesCount={analysis?.opportunities.length}
+                risksCount={analysis?.risks.length}
+                isOnFiverr={isOnFiverr}
+                isFetching={isFetchingData}
+                onFetchAll={handleFetchAllData}
+                onNavigate={setActiveView}
+              />
             )}
 
             {/* CONTACTS */}
@@ -804,382 +723,49 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* ORDERS */}
             {activeView === 'orders' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold">Orders</h3>
-                  <Button onClick={handleFetchOrders} disabled={isFetchingData || !isOnFiverr} size="sm">{isFetchingData ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}Fetch Orders</Button>
-                </div>
-                {ordersData ? (() => {
-                  const isDerived = ordersData.derivedFrom === 'earnings';
-                  const txns = isDerived ? (ordersData.transactions || []) : (ordersData.transactions || ordersData.list || (Array.isArray(ordersData) ? ordersData : []));
-                  const totalNet = txns.reduce((s: number, t: any) => s + (t.amount || 0), 0);
-                  const totalFees = txns.reduce((s: number, t: any) => s + ((t.amount || 0) * 0.25), 0);
-                  const totalGross = totalNet + totalFees;
-                  const avgOrder = txns.length > 0 ? totalNet / txns.length : 0;
-                  const avgFee = txns.length > 0 ? totalFees / txns.length : 0;
-                  return (
-                    <div className="space-y-4">
-                      {isDerived && <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20"><p className="text-xs text-blue-500">Orders derived from earnings data</p></div>}
-                      {txns.length > 0 ? (
-                        <>
-                          <div className="grid grid-cols-4 gap-2">
-                            <Card className="p-3"><p className="text-[10px] text-muted-foreground">Gross Revenue</p><p className="text-lg font-bold text-green-500">${(totalGross / 100).toFixed(2)}</p></Card>
-                            <Card className="p-3"><p className="text-[10px] text-muted-foreground">Fiverr Fees (20%)</p><p className="text-lg font-bold text-red-500">-${(totalFees / 100).toFixed(2)}</p></Card>
-                            <Card className="p-3"><p className="text-[10px] text-muted-foreground">Net Received</p><p className="text-lg font-bold text-green-500">${(totalNet / 100).toFixed(2)}</p></Card>
-                            <Card className="p-3"><p className="text-[10px] text-muted-foreground">Avg Fee/Order</p><p className="text-lg font-bold text-red-400">${(avgFee / 100).toFixed(2)}</p></Card>
-                          </div>
-                          <Card><CardContent className="space-y-2 max-h-96 overflow-auto p-4">
-                            {txns.map((t: any, i: number) => {
-                              const net = t.amount || 0;
-                              const gross = net / 0.80;
-                              const fee = gross - net;
-                              return (
-                                <div key={i} className="p-3 rounded-lg bg-muted/50 space-y-1">
-                                  <div className="flex items-center justify-between">
-                                    <div>
-                                      <p className="text-sm font-medium">{t.from || 'Unknown buyer'}</p>
-                                      <p className="text-xs text-muted-foreground">{t.order?.encryptedId || ''} {t.orderableItem ? `· ${t.orderableItem}` : ''} · {new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
-                                    </div>
-                                    <span className="text-sm font-bold text-green-500">${(net / 100).toFixed(2)} net</span>
-                                  </div>
-                                  <div className="flex gap-3 text-[10px]">
-                                    <span className="text-green-500">Gross: ${(gross / 100).toFixed(2)}</span>
-                                    <span className="text-red-400">Fee: ${(fee / 100).toFixed(2)}</span>
-                                    <span className="text-muted-foreground">Net: ${(net / 100).toFixed(2)}</span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </CardContent></Card>
-                        </>
-                      ) : (
-                        <Card><CardContent className="p-4"><pre className="text-xs overflow-auto max-h-96 bg-muted p-3 rounded-lg">{JSON.stringify(ordersData, null, 2)}</pre></CardContent></Card>
-                      )}
-                    </div>
-                  );
-                })() : <div className="text-center py-12 text-muted-foreground"><ShoppingCart className="h-12 w-12 mx-auto mb-3 opacity-40" /><p>No orders data yet. Click "Fetch Orders" to load.</p></div>}
-              </div>
+              <OrdersPanel
+                ordersData={ordersData}
+                isFetching={isFetchingData}
+                isOnFiverr={isOnFiverr}
+                onFetchOrders={handleFetchOrders}
+              />
             )}
 
-            {/* EARNINGS */}
             {activeView === 'earnings' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between"><h3 className="text-lg font-semibold">Earnings</h3><Button onClick={handleFetchEarnings} disabled={isFetchingData || !isOnFiverr} size="sm">{isFetchingData ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}Fetch All Earnings</Button></div>
-                {earningsData ? (() => {
-                  const txns = earningsData?.data?.transactions || [];
-                  const counters = earningsData?.data?.countersPerActivity || [];
-                  const pagesLoaded = earningsData?.data?.pagesLoaded || 1;
-                  const earnings = txns.filter((t: any) => t.activity === 'EARNING');
-                  const withdrawals = txns.filter((t: any) => t.activity === 'WITHDRAWAL');
-                  const purchases = txns.filter((t: any) => t.activity === 'PURCHASE');
-                  const reversals = txns.filter((t: any) => t.activity === 'EARNING_REVERSED');
-                  const FIVERR_FEE_RATE = 0.20;
-                  const totalGrossEarnings = earnings.reduce((s: number, t: any) => s + (t.amount || 0), 0);
-                  const totalReversed = reversals.reduce((s: number, t: any) => s + Math.abs(t.amount || 0), 0);
-                  const totalEarned = totalGrossEarnings - totalReversed;
-                  const totalWithdrawn = withdrawals.reduce((s: number, t: any) => s + Math.abs(t.amount || 0), 0);
-                  const totalPurchases = purchases.reduce((s: number, t: any) => s + Math.abs(t.amount || 0), 0);
-                  const totalFeesPaid = earnings.reduce((s: number, t: any) => s + ((t.amount || 0) * FIVERR_FEE_RATE / (1 - FIVERR_FEE_RATE)), 0) - reversals.reduce((s: number, t: any) => s + ((Math.abs(t.amount || 0)) * FIVERR_FEE_RATE / (1 - FIVERR_FEE_RATE)), 0);
-                  const totalGrossAmount = totalEarned + totalFeesPaid;
-                  const balance = totalEarned - totalWithdrawn - totalPurchases;
-                  const avgOrder = earnings.length > 0 ? totalEarned / earnings.length : 0;
-                  const avgFee = earnings.length > 0 ? totalFeesPaid / earnings.length : 0;
-                  const biggestOrder = earnings.length > 0 ? Math.max(...earnings.map((t: any) => t.amount || 0)) : 0;
-                  const smallestOrder = earnings.length > 0 ? Math.min(...earnings.map((t: any) => t.amount || 0)) : 0;
-                  const effectiveTakeRate = totalGrossAmount > 0 ? (totalFeesPaid / totalGrossAmount) * 100 : 0;
-                  const uniqueBuyers = [...new Set(earnings.map((t: any) => t.from).filter(Boolean))];
-                  const earliestDate = txns.length > 0 ? new Date(txns[txns.length - 1].date) : new Date();
-                  const latestDate = txns.length > 0 ? new Date(txns[0].date) : new Date();
-                  const daysActive = Math.max(1, Math.ceil((latestDate.getTime() - earliestDate.getTime()) / 86400000));
-                  const yearlyData: Record<string, { earned: number; grossEarned: number; feesPaid: number; withdrawn: number; spent: number; count: number; orders: number }> = {};
-                  const monthlyData: Record<string, { earned: number; grossEarned: number; feesPaid: number; withdrawn: number; spent: number; count: number }> = {};
-                  txns.forEach((t: any) => {
-                    const d = new Date(t.date);
-                    const yKey = String(d.getFullYear());
-                    const mKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-                    if (!yearlyData[yKey]) yearlyData[yKey] = { earned: 0, grossEarned: 0, feesPaid: 0, withdrawn: 0, spent: 0, count: 0, orders: 0 };
-                    if (!monthlyData[mKey]) monthlyData[mKey] = { earned: 0, grossEarned: 0, feesPaid: 0, withdrawn: 0, spent: 0, count: 0 };
-                    if (t.activity === 'EARNING') { 
-                      const net = t.amount || 0; 
-                      const fee = net * FIVERR_FEE_RATE / (1 - FIVERR_FEE_RATE);
-                      const gross = net + fee;
-                      yearlyData[yKey].earned += net; yearlyData[yKey].grossEarned += gross; yearlyData[yKey].feesPaid += fee; yearlyData[yKey].orders++; 
-                      monthlyData[mKey].earned += net; monthlyData[mKey].grossEarned += gross; monthlyData[mKey].feesPaid += fee;
-                    }
-                    else if (t.activity === 'EARNING_REVERSED') {
-                      const net = Math.abs(t.amount || 0);
-                      const fee = net * FIVERR_FEE_RATE / (1 - FIVERR_FEE_RATE);
-                      const gross = net + fee;
-                      yearlyData[yKey].earned -= net; yearlyData[yKey].grossEarned -= gross; yearlyData[yKey].feesPaid -= fee;
-                      monthlyData[mKey].earned -= net; monthlyData[mKey].grossEarned -= gross; monthlyData[mKey].feesPaid -= fee;
-                    }
-                    else if (t.activity === 'WITHDRAWAL') { yearlyData[yKey].withdrawn += Math.abs(t.amount || 0); monthlyData[mKey].withdrawn += Math.abs(t.amount || 0); }
-                    else if (t.activity === 'PURCHASE') { yearlyData[yKey].spent += Math.abs(t.amount || 0); monthlyData[mKey].spent += Math.abs(t.amount || 0); }
-                    yearlyData[yKey].count++; monthlyData[mKey].count++;
-                  });
-                  const sortedYears = Object.keys(yearlyData).sort();
-                  const sortedMonths = Object.keys(monthlyData).sort().reverse();
-                  const maxYearlyEarned = Math.max(...sortedYears.map(y => yearlyData[y].earned), 1);
-                  const maxMonthlyEarned = Math.max(...sortedMonths.map(m => monthlyData[m].earned), 1);
-                  const buyerStats: Record<string, { total: number; count: number; first: string; last: string }> = {};
-                  earnings.forEach((t: any) => {
-                    const b = t.from || 'Unknown';
-                    if (!buyerStats[b]) buyerStats[b] = { total: 0, count: 0, first: t.date, last: t.date };
-                    buyerStats[b].total += t.amount || 0;
-                    buyerStats[b].count++;
-                    if (t.date < buyerStats[b].first) buyerStats[b].first = t.date;
-                    if (t.date > buyerStats[b].last) buyerStats[b].last = t.date;
-                  });
-                  const topBuyers = Object.entries(buyerStats).sort((a, b) => b[1].total - a[1].total).slice(0, 15);
-                  const repeatBuyers = Object.entries(buyerStats).filter(([, s]) => s.count > 1).sort((a, b) => b[1].count - a[1].count);
-                  const typeStats: Record<string, { total: number; count: number }> = {};
-                  earnings.forEach((t: any) => { const tp = t.orderableItem || 'OTHER'; if (!typeStats[tp]) typeStats[tp] = { total: 0, count: 0 }; typeStats[tp].total += t.amount || 0; typeStats[tp].count++; });
-                  const monthlySorted = Object.entries(monthlyData).sort((a, b) => b[1].earned - a[1].earned);
-                  const bestMonth = monthlySorted[0];
-                  const worstMonth = monthlySorted[monthlySorted.length - 1];
-                  const tips = earnings.filter((t: any) => t.orderableItem === 'TIP');
-                  const totalTips = tips.reduce((s: number, t: any) => s + (t.amount || 0), 0);
-                  return (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-4 gap-2">
-                        <Card className="p-3"><p className="text-[10px] text-muted-foreground">Gross Revenue (before fees)</p><p className="text-xl font-bold text-green-500">${(totalGrossAmount / 100).toFixed(2)}</p><p className="text-[10px] text-muted-foreground">{earnings.length} orders · {daysActive} days active</p></Card>
-                        <Card className="p-3"><p className="text-[10px] text-muted-foreground">Fiverr Fees (20%)</p><p className="text-xl font-bold text-red-500">-${(totalFeesPaid / 100).toFixed(2)}</p><p className="text-[10px] text-muted-foreground">{effectiveTakeRate.toFixed(1)}% effective rate</p></Card>
-                        <Card className="p-3"><p className="text-[10px] text-muted-foreground">Net Received</p><p className="text-xl font-bold text-green-500">${(totalEarned / 100).toFixed(2)}</p><p className="text-[10px] text-muted-foreground">{withdrawals.length} withdrawals</p></Card>
-                        <Card className="p-3"><p className="text-[10px] text-muted-foreground">Net Balance</p><p className={`text-xl font-bold ${balance >= 0 ? 'text-green-500' : 'text-red-500'}`}>${(balance / 100).toFixed(2)}</p><p className="text-[10px] text-muted-foreground">{pagesLoaded} pages fetched</p></Card>
-                      </div>
-                      <div className="grid grid-cols-5 gap-2">
-                        <Card className="p-2 text-center"><p className="text-lg font-bold text-red-400">${(avgFee / 100).toFixed(0)}</p><p className="text-[10px] text-muted-foreground">Avg Fee/Order</p></Card>
-                        <Card className="p-2 text-center"><p className="text-lg font-bold">${(avgOrder / 100).toFixed(0)}</p><p className="text-[10px] text-muted-foreground">Avg Net/Order</p></Card>
-                        <Card className="p-2 text-center"><p className="text-lg font-bold text-green-500">${(biggestOrder / 100).toFixed(0)}</p><p className="text-[10px] text-muted-foreground">Biggest Order</p></Card>
-                        <Card className="p-2 text-center"><p className="text-lg font-bold">{uniqueBuyers.length}</p><p className="text-[10px] text-muted-foreground">Unique Buyers</p></Card>
-                        <Card className="p-2 text-center"><p className="text-lg font-bold text-yellow-500">${(totalTips / 100).toFixed(0)}</p><p className="text-[10px] text-muted-foreground">{tips.length} Tips</p></Card>
-                      </div>
-                      <div className="flex gap-1 border rounded-lg p-1 bg-muted/50">
-                        {(['overview', 'yearly', 'monthly', 'buyers', 'types', 'withdrawals', 'transactions'] as const).map(tab => (
-                          <button key={tab} onClick={() => setEarningsTab(tab)} className={`flex-1 px-2 py-1.5 text-[10px] font-medium rounded-md transition-all ${earningsTab === tab ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>{tab.charAt(0).toUpperCase() + tab.slice(1)}</button>
-                        ))}
-                      </div>
-                      {earningsTab === 'overview' && (
-                        <div className="space-y-4">
-                          <Card><CardHeader><CardTitle>Yearly Summary</CardTitle></CardHeader><CardContent className="space-y-3">
-                            {sortedYears.map(year => (
-                              <div key={year} className="space-y-1">
-                                <div className="flex justify-between text-xs"><span className="font-medium">{year}</span><span className="text-green-500 font-bold">${(yearlyData[year].earned / 100).toFixed(2)} net</span></div>
-                                <div className="h-4 bg-muted rounded-full overflow-hidden"><div className="h-full bg-green-500 rounded-l-full" style={{ width: `${(yearlyData[year].earned / maxYearlyEarned) * 100}%` }} /></div>
-                                <div className="flex gap-3 text-[10px] text-muted-foreground"><span>{yearlyData[year].orders} orders</span><span className="text-red-400">-${(yearlyData[year].feesPaid / 100).toFixed(2)} fees</span><span className="text-orange-500">-${(yearlyData[year].withdrawn / 100).toFixed(2)} withdrawn</span></div>
-                              </div>
-                            ))}
-                          </CardContent></Card>
-                          {bestMonth && <Card className="p-3"><div className="flex justify-between"><div><p className="text-xs text-muted-foreground">Best Month</p><p className="text-sm font-bold">{new Date(bestMonth[0] + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p></div><span className="text-lg font-bold text-green-500">${(bestMonth[1].earned / 100).toFixed(2)}</span></div></Card>}
-                          {counters.length > 0 && <Card><CardContent className="p-4"><div className="flex flex-wrap gap-2">{counters.map((c: any, i: number) => <div key={i} className="flex items-center gap-1.5 px-2 py-1 rounded bg-muted text-[10px]"><span className="font-medium">{c.activity}</span><Badge variant="secondary" className="text-[10px]">{c.count}</Badge></div>)}</div></CardContent></Card>}
-                        </div>
-                      )}
-                      {earningsTab === 'yearly' && (
-                        <Card><CardHeader><CardTitle>Yearly Breakdown</CardTitle></CardHeader><CardContent className="space-y-4 max-h-96 overflow-auto">
-                          {sortedYears.map(year => {
-                            const yEarned = yearlyData[year].earned;
-                            const yFees = yearlyData[year].feesPaid;
-                            const yGross = yearlyData[year].grossEarned;
-                            const yWithdrawn = yearlyData[year].withdrawn;
-                            const yAvg = yearlyData[year].orders > 0 ? yEarned / yearlyData[year].orders : 0;
-                            const yFeeRate = yGross > 0 ? (yFees / yGross) * 100 : 0;
-                            return (
-                              <div key={year} className="p-3 rounded-lg bg-muted/50 space-y-2">
-                                <div className="flex justify-between items-center"><span className="text-sm font-bold">{year}</span><span className="text-sm font-bold text-green-500">${(yEarned / 100).toFixed(2)} net</span></div>
-                                <div className="h-5 bg-background rounded-full overflow-hidden flex">
-                                  <div className="h-full bg-green-500 rounded-l-full" style={{ width: `${(yEarned / maxYearlyEarned) * 100}%` }} />
-                                </div>
-                                <div className="grid grid-cols-3 gap-2 text-[10px]">
-                                  <div className="text-center"><span className="text-green-500 font-bold">${(yGross / 100).toFixed(0)}</span><br/><span className="text-muted-foreground">Gross</span></div>
-                                  <div className="text-center"><span className="text-red-400 font-bold">-${(yFees / 100).toFixed(0)}</span><br/><span className="text-muted-foreground">Fees ({yFeeRate.toFixed(1)}%)</span></div>
-                                  <div className="text-center"><span className="text-foreground font-bold">${(yEarned / 100).toFixed(0)}</span><br/><span className="text-muted-foreground">Net</span></div>
-                                </div>
-                                <div className="flex gap-4 text-[10px] text-muted-foreground">
-                                  <span>{yearlyData[year].orders} orders</span>
-                                  <span>Avg: ${(yAvg / 100).toFixed(0)}/order</span>
-                                  <span className="text-orange-500">-${(yWithdrawn / 100).toFixed(2)} withdrawn</span>
-                                  {yearlyData[year].spent > 0 && <span className="text-red-500">-${(yearlyData[year].spent / 100).toFixed(2)} spent</span>}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </CardContent></Card>
-                      )}
-                      {earningsTab === 'monthly' && (
-                        <Card><CardHeader><CardTitle>Monthly Breakdown</CardTitle></CardHeader><CardContent className="space-y-3 max-h-96 overflow-auto">
-                          {sortedMonths.map(month => (
-                            <div key={month} className="space-y-1">
-                              <div className="flex justify-between text-xs"><span className="font-medium">{new Date(month + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span><span className="text-green-500 font-bold">${(monthlyData[month].earned / 100).toFixed(2)} net</span></div>
-                              <div className="h-3 bg-muted rounded-full overflow-hidden"><div className="h-full bg-green-500 rounded-l-full" style={{ width: `${(monthlyData[month].earned / maxMonthlyEarned) * 100}%` }} /></div>
-                              <div className="flex gap-3 text-[10px] text-muted-foreground"><span>{monthlyData[month].count} txns</span><span className="text-red-400">-${(monthlyData[month].feesPaid / 100).toFixed(2)} fees</span><span className="text-orange-500">-${(monthlyData[month].withdrawn / 100).toFixed(2)}</span></div>
-                            </div>
-                          ))}
-                        </CardContent></Card>
-                      )}
-                      {earningsTab === 'buyers' && (
-                        <div className="space-y-4">
-                          {repeatBuyers.length > 0 && <Card><CardHeader><CardTitle>Repeat Buyers ({repeatBuyers.length})</CardTitle></CardHeader><CardContent className="space-y-2">
-                            {repeatBuyers.slice(0, 10).map(([name, stats]) => {
-                              const gross = stats.total / 0.80;
-                              const fees = gross - stats.total;
-                              return (
-                                <div key={name} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
-                                  <div className="flex items-center gap-2"><div className="h-7 w-7 rounded-full bg-gradient-to-br from-primary/20 to-blue-500/20 flex items-center justify-center"><span className="text-[10px] font-bold">{name.charAt(0).toUpperCase()}</span></div><div><p className="text-xs font-medium">{name}</p><p className="text-[10px] text-muted-foreground">{stats.count} orders · Gross: ${(gross / 100).toFixed(2)} · Fees: ${(fees / 100).toFixed(2)}</p></div></div>
-                                  <span className="text-xs font-bold text-green-500">${(stats.total / 100).toFixed(2)} net</span>
-                                </div>
-                              );
-                            })}
-                          </CardContent></Card>}
-                          <Card><CardHeader><CardTitle>All Buyers</CardTitle></CardHeader><CardContent className="space-y-2 max-h-96 overflow-auto">
-                            {topBuyers.map(([name, stats], i) => {
-                              const gross = stats.total / 0.80;
-                              const fees = gross - stats.total;
-                              return (
-                                <div key={name} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
-                                  <div className="flex items-center gap-2"><span className="text-[10px] font-bold text-muted-foreground w-4">#{i + 1}</span><div className="h-7 w-7 rounded-full bg-gradient-to-br from-primary/20 to-blue-500/20 flex items-center justify-center"><span className="text-[10px] font-bold">{name.charAt(0).toUpperCase()}</span></div><div><p className="text-xs font-medium">{name}</p><p className="text-[10px] text-muted-foreground">{stats.count} order{stats.count !== 1 ? 's' : ''} · Fees: ${(fees / 100).toFixed(2)}</p></div></div>
-                                  <span className="text-xs font-bold text-green-500">${(stats.total / 100).toFixed(2)} net</span>
-                                </div>
-                              );
-                            })}
-                          </CardContent></Card>
-                        </div>
-                      )}
-                      {earningsTab === 'types' && (
-                        <Card><CardHeader><CardTitle>Earnings by Type</CardTitle></CardHeader><CardContent className="space-y-3">
-                          {Object.entries(typeStats).sort((a, b) => b[1].total - a[1].total).map(([type, stats]) => {
-                            const gross = stats.total / 0.80;
-                            const fees = gross - stats.total;
-                            return (
-                              <div key={type} className="space-y-1">
-                                <div className="flex justify-between text-xs"><span className="font-medium">{type}</span><span className="text-green-500 font-bold">${(stats.total / 100).toFixed(2)} ({stats.count})</span></div>
-                                <div className="h-3 bg-muted rounded-full overflow-hidden"><div className="h-full bg-green-500 rounded-full" style={{ width: `${(stats.total / totalEarned) * 100}%` }} /></div>
-                                <div className="flex gap-3 text-[10px] text-muted-foreground"><span>Gross: ${(gross / 100).toFixed(2)}</span><span className="text-red-400">Fees: ${(fees / 100).toFixed(2)}</span></div>
-                              </div>
-                            );
-                          })}
-                        </CardContent></Card>
-                      )}
-                      {earningsTab === 'withdrawals' && (
-                        <Card><CardHeader><CardTitle>Withdrawal History</CardTitle></CardHeader><CardContent className="space-y-2 max-h-96 overflow-auto">
-                          {withdrawals.map((w: any, i: number) => (
-                            <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                              <div><p className="text-sm font-medium">{w.from || 'PayPal'}</p><p className="text-[10px] text-muted-foreground">{new Date(w.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} · {w.withdrawalStatus || 'Completed'}</p></div>
-                              <span className="text-sm font-bold text-orange-500">-${(Math.abs(w.amount) / 100).toFixed(2)}</span>
-                            </div>
-                          ))}
-                          {withdrawals.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No withdrawals</p>}
-                        </CardContent></Card>
-                      )}
-                      {earningsTab === 'transactions' && (
-                        <Card><CardContent className="space-y-2 max-h-96 overflow-auto p-4">
-                          <div className="p-3 rounded-lg bg-muted/50 border border-f5 mb-2">
-                            <div className="grid grid-cols-3 gap-4 text-center text-[10px]">
-                              <div><p className="text-green-500 font-bold text-sm">${(totalGrossAmount / 100).toFixed(2)}</p><p className="text-muted-foreground">Total Gross</p></div>
-                              <div><p className="text-red-500 font-bold text-sm">-${(totalFeesPaid / 100).toFixed(2)}</p><p className="text-muted-foreground">Total Fiverr Fees (20%)</p></div>
-                              <div><p className="text-green-500 font-bold text-sm">${(totalEarned / 100).toFixed(2)}</p><p className="text-muted-foreground">Total Net Received</p></div>
-                            </div>
-                          </div>
-                          {txns.map((t: any, i: number) => {
-                            const isEarning = t.activity === 'EARNING';
-                            const net = t.amount || 0;
-                            const gross = isEarning ? net / 0.80 : 0;
-                            const fee = isEarning ? gross - net : 0;
-                            return (
-                              <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                                <div className="flex items-center gap-3">
-                                  <div className={`h-8 w-8 rounded-full flex items-center justify-center ${t.amount > 0 ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
-                                    {t.amount > 0 ? <ArrowUpRight className="h-4 w-4 text-green-500" /> : <ArrowDownLeft className="h-4 w-4 text-red-500" />}
-                                  </div>
-                                  <div>
-                                    <p className="text-sm font-medium">{t.activity} {t.from ? `from ${t.from}` : t.service || ''}</p>
-                                    <p className="text-xs text-muted-foreground">{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}{t.order?.encryptedId ? ` · ${t.order.encryptedId}` : ''}{t.orderableItem ? ` · ${t.orderableItem}` : ''}</p>
-                                    {isEarning && (
-                                      <p className="text-[10px] text-red-400">Gross: ${(gross / 100).toFixed(2)} - Fee: ${(fee / 100).toFixed(2)}</p>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="text-right">
-                                  <span className={`text-sm font-bold ${t.amount > 0 ? 'text-green-500' : 'text-red-500'}`}>{t.amount > 0 ? '+' : ''}${(t.amount / 100).toFixed(2)}</span>
-                                  {isEarning && <p className="text-[10px] text-red-400">-${(fee / 100).toFixed(2)} fee</p>}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </CardContent></Card>
-                      )}
-                    </div>
-                  );
-                })() : <div className="text-center py-12 text-muted-foreground"><DollarSign className="h-12 w-12 mx-auto mb-3 opacity-40" /><p>No earnings data yet. Click "Fetch All Earnings" to load your complete transaction history since joining.</p></div>}
-              </div>
+              <EarningsPanel
+                earningsData={earningsData}
+                isFetching={isFetchingData}
+                isOnFiverr={isOnFiverr}
+                onFetchEarnings={handleFetchEarnings}
+              />
             )}
 
-            {/* REVIEWS */}
+            {activeView === 'insights' && (
+              <InsightsPanel
+                earningsData={earningsData}
+                ordersData={ordersData}
+                reviewsData={reviewsData}
+                notificationsData={notificationsData}
+              />
+            )}
+
             {activeView === 'reviews' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between"><h3 className="text-lg font-semibold">Reviews</h3><Button onClick={handleFetchReviews} disabled={isFetchingData || !isOnFiverr} size="sm">{isFetchingData ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}Fetch Reviews</Button></div>
-                {reviewsData ? (() => {
-                  const sellingReviews = reviewsData?.selling_reviews?.reviews || reviewsData?.reviews || [];
-                  const buyingReviews = reviewsData?.buying_reviews?.reviews || [];
-                  const totalCount = reviewsData?.selling_reviews?.total_count || reviewsData?.total_count || sellingReviews.length;
-                  const avgRating = reviewsData?.selling_reviews?.average_valuation || reviewsData?.average_valuation;
-                  const breakdown = reviewsData?.buying_reviews?.breakdown || [];
-                  return (
-                    <div className="space-y-4">
-                      {avgRating && (
-                        <div className="grid grid-cols-3 gap-3">
-                          <Card className="p-4 text-center"><p className="text-xs text-muted-foreground">Average Rating</p><p className="text-3xl font-bold">{avgRating?.toFixed?.(1) || avgRating}</p><div className="flex justify-center mt-1">{[1,2,3,4,5].map(s => <Star key={s} className={`h-4 w-4 ${s <= Math.round(avgRating) ? 'fill-yellow-500 text-yellow-500' : 'text-muted'}`} />)}</div></Card>
-                          <Card className="p-4 text-center"><p className="text-xs text-muted-foreground">Total Reviews</p><p className="text-3xl font-bold">{totalCount}</p></Card>
-                          <Card className="p-4 text-center"><p className="text-xs text-muted-foreground">5-Star Reviews</p><p className="text-3xl font-bold">{breakdown.find((b: any) => b.average_valuation_value === 5)?.count || 0}</p></Card>
-                        </div>
-                      )}
-                      {breakdown.length > 0 && (
-                        <Card><CardContent className="p-4 space-y-2">{breakdown.map((b: any, i: number) => (
-                          <div key={i} className="flex items-center gap-3"><span className="text-xs w-8">{b.average_valuation_value}★</span><div className="flex-1 h-3 bg-muted rounded-full overflow-hidden"><div className="h-full bg-yellow-500 rounded-full" style={{ width: `${totalCount > 0 ? (b.count / totalCount * 100) : 0}%` }} /></div><span className="text-xs text-muted-foreground w-8 text-right">{b.count}</span></div>
-                        ))}</CardContent></Card>
-                      )}
-                      <Card><CardHeader><CardTitle>Reviews</CardTitle></CardHeader><CardContent className="space-y-3 max-h-96 overflow-auto">
-                        {sellingReviews.length > 0 ? sellingReviews.map((r: any, i: number) => (
-                          <div key={i} className="p-3 rounded-lg bg-muted/50">
-                            <div className="flex items-center justify-between mb-1"><div className="flex items-center gap-2"><span className="text-sm font-medium">{r.username || r.buyer_name || 'Anonymous'}</span><div className="flex">{[1,2,3,4,5].map(s => <Star key={s} className={`h-3 w-3 ${s <= (r.value || r.score || 0) ? 'fill-yellow-500 text-yellow-500' : 'text-muted'}`} />)}</div></div><span className="text-xs text-muted-foreground">{r.created_at ? new Date(r.created_at).toLocaleDateString() : ''}</span></div>
-                            {r.comment && <p className="text-xs text-muted-foreground">{r.comment}</p>}
-                          </div>
-                        )) : buyingReviews.length > 0 ? buyingReviews.map((r: any, i: number) => (
-                          <div key={i} className="p-3 rounded-lg bg-muted/50">
-                            <div className="flex items-center justify-between mb-1"><div className="flex items-center gap-2"><span className="text-sm font-medium">{r.username || 'Anonymous'}</span><div className="flex">{[1,2,3,4,5].map(s => <Star key={s} className={`h-3 w-3 ${s <= (r.value || r.score || 0) ? 'fill-yellow-500 text-yellow-500' : 'text-muted'}`} />)}</div></div></div>
-                            {r.comment && <p className="text-xs text-muted-foreground">{r.comment}</p>}
-                          </div>
-                        )) : <p className="text-sm text-muted-foreground text-center py-4">No reviews found</p>}
-                      </CardContent></Card>
-                    </div>
-                  );
-                })() : <div className="text-center py-12 text-muted-foreground"><Star className="h-12 w-12 mx-auto mb-3 opacity-40" /><p>No reviews data yet. Click "Fetch Reviews" to load.</p></div>}
-              </div>
+              <ReviewsPanel
+                reviewsData={reviewsData}
+                isFetching={isFetchingData}
+                isOnFiverr={isOnFiverr}
+                onFetchReviews={handleFetchReviews}
+              />
             )}
 
-            {/* NOTIFICATIONS */}
             {activeView === 'notifications' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between"><h3 className="text-lg font-semibold">Notifications</h3><Button onClick={handleFetchNotifications} disabled={isFetchingData || !isOnFiverr} size="sm">{isFetchingData ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}Fetch Notifications</Button></div>
-                {notificationsData ? (() => {
-                  const count = notificationsData?.count ?? 0;
-                  const message = notificationsData?.message || '';
-                  const items = notificationsData?.notifications || notificationsData?.items || [];
-                  return (
-                    <div className="space-y-4">
-                      <Card className="p-4"><div className="flex items-center gap-3"><div className={`h-12 w-12 rounded-full flex items-center justify-center ${count > 0 ? 'bg-red-500/20' : 'bg-green-500/20'}`}><Bell className={`h-6 w-6 ${count > 0 ? 'text-red-500' : 'text-green-500'}`} /></div><div><p className="text-lg font-bold">{count}</p><p className="text-xs text-muted-foreground">{message || (count > 0 ? 'Unread notifications' : 'No unread notifications')}</p></div></div></Card>
-                      {items.length > 0 && (
-                        <Card><CardContent className="space-y-2 max-h-96 overflow-auto p-4">
-                          {items.map((n: any, i: number) => (
-                            <div key={i} className="p-3 rounded-lg bg-muted/50"><p className="text-sm">{n.text || n.message || n.title || JSON.stringify(n)}</p><p className="text-xs text-muted-foreground mt-1">{n.date || n.created_at || ''}</p></div>
-                          ))}
-                        </CardContent></Card>
-                      )}
-                    </div>
-                  );
-                })() : <div className="text-center py-12 text-muted-foreground"><Bell className="h-12 w-12 mx-auto mb-3 opacity-40" /><p>No notifications data yet. Click "Fetch Notifications" to load.</p></div>}
-              </div>
+              <NotificationsPanel
+                notificationsData={notificationsData}
+                isFetching={isFetchingData}
+                isOnFiverr={isOnFiverr}
+                onFetchNotifications={handleFetchNotifications}
+              />
             )}
 
             {/* STATISTICS */}
@@ -1259,26 +845,18 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* SETTINGS */}
             {activeView === 'settings' && (
-              <div className="space-y-6 max-w-2xl">
-                <Card><CardHeader><CardTitle className="flex items-center gap-2"><User className="h-5 w-5" />Account</CardTitle></CardHeader><CardContent className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 bg-muted rounded-lg"><div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center"><User className="h-5 w-5 text-primary" /></div><div><p className="font-medium">{currentUser.username}</p><p className="text-xs text-muted-foreground">{currentUser.email}</p></div></div>
-                  <Button variant="outline" onClick={handleLogout} className="w-full"><LogOut className="h-4 w-4 mr-2" />Logout</Button>
-                </CardContent></Card>
-                <Card><CardHeader><CardTitle>Appearance</CardTitle></CardHeader><CardContent><div className="flex items-center justify-between"><span>Dark mode</span><Button variant={darkMode ? 'default' : 'outline'} size="sm" onClick={() => { setDarkMode(!darkMode); chrome.storage.local.set({ darkMode: !darkMode }); }}>{darkMode ? <><Moon className="h-4 w-4 mr-1" />On</> : <><Sun className="h-4 w-4 mr-1" />Off</>}</Button></div></CardContent></Card>
-                <Card><CardHeader><CardTitle>Data Management</CardTitle></CardHeader><CardContent className="space-y-3">
-                  <div className="flex items-center justify-between"><div><p className="text-sm font-medium">Total contacts</p><p className="text-xs text-muted-foreground">{contacts.length} stored</p></div><Badge variant="secondary">{contacts.length}</Badge></div>
-                  <div className="flex items-center justify-between"><div><p className="text-sm font-medium">Current messages</p><p className="text-xs text-muted-foreground">{conversationData?.messages.length || 0} in conversation</p></div><Badge variant="secondary">{conversationData?.messages.length || 0}</Badge></div>
-                  <Separator />
-                  <Button variant="destructive" onClick={clearAllData} className="w-full"><Trash2 className="h-4 w-4 mr-2" />Clear All Data</Button>
-                </CardContent></Card>
-                <Card><CardHeader><CardTitle>About</CardTitle></CardHeader><CardContent className="space-y-2 text-sm text-muted-foreground"><p className="font-medium text-foreground">Fiverr Conversation Extractor v2.0</p><p>Advanced AI-powered conversation analysis with sentiment detection, risk monitoring, and opportunity identification.</p></CardContent></Card>
-              </div>
+              <SettingsPanel
+                isDark={darkMode}
+                onToggleTheme={() => { setDarkMode(!darkMode); chrome.storage.local.set({ darkMode: !darkMode }); }}
+                onExportData={(format) => handleDownload(format === 'txt' ? 'txt' : format === 'json' ? 'json' : 'csv')}
+                onClearCache={clearAllData}
+                earningsData={earningsData}
+                ordersData={ordersData}
+                reviewsData={reviewsData}
+                notificationsData={notificationsData}
+              />
             )}
-          </div>
-        </ScrollArea>
-      </div>
-    </div>
+    </DashboardShell>
   );
 }

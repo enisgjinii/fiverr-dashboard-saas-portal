@@ -7,7 +7,7 @@ export interface Transaction {
   to: string
   service: string
   orderableItem: string
-  order: { encryptedId: string }
+  order: { encryptedId: string; buyer?: { username?: string }; date?: string }
   withdrawalStatus: string
   status: string
   type: string

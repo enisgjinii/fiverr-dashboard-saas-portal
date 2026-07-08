@@ -85,7 +85,7 @@ export default function ReviewsPanel({ reviewsData, isFetching, isOnFiverr, onFe
     const fiveStarCount = breakdown.find(b => b.average_valuation_value === 5)?.count ?? 0
     const fiveStarPct = totalCount > 0 ? (fiveStarCount / totalCount) * 100 : 0
 
-    const responseRate = null
+    const responseRate = null as number | null
 
     const monthlyTrend: Record<string, { total: number; count: number }> = {}
     allReviews.forEach(r => {
@@ -256,7 +256,7 @@ export default function ReviewsPanel({ reviewsData, isFetching, isOnFiverr, onFe
           <p className="text-[10px] text-muted-foreground mt-1">{fiveStarPct.toFixed(1)}% are 5-star</p>
         </Card>
         <Card className="p-4 text-center">
-          <p className="text-3xl font-bold">{responseRate !== null ? `${responseRate.toFixed(0)}%` : "N/A"}</p>
+          <p className="text-3xl font-bold">{typeof responseRate === "number" ? `${responseRate.toFixed(0)}%` : "N/A"}</p>
           <p className="text-[10px] text-muted-foreground mt-1">Response Rate</p>
         </Card>
       </div>

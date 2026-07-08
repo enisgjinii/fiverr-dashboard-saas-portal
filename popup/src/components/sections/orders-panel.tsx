@@ -247,7 +247,7 @@ export function OrdersPanel({ ordersData, isFetching, isOnFiverr, onFetchOrders 
         />
       </div>
 
-      <ChartCard title="Orders Value Distribution" icon={TrendingUp}>
+      <ChartCard title="Orders Value Distribution">
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={chartBuckets} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -260,7 +260,7 @@ export function OrdersPanel({ ordersData, isFetching, isOnFiverr, onFetchOrders 
                 borderRadius: "var(--radius)",
                 fontSize: 13,
               }}
-              formatter={(value: number) => [value, "Orders"]}
+              formatter={(value) => [value ?? 0, "Orders"]}
             />
             <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={48}>
               {chartBuckets.map((_, i) => (
